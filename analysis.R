@@ -8,6 +8,20 @@ sprintf("No. of records: %d",records)
 sprintf("No. of attributes: %d",attrs)
 class(data)
 
+#as all attributes except Longitude and Latitude are nominal and ordinal attributes,
+#we'll convert them as factors to explicitly discretize them
+#doing this prevents summary to be drawn in an incorrect way, i.e. 5 point summary doesn't make
+#sense in discrete and nominal/ordinal attributes
+
+#not making rating a factor as mean median etc operations are meaningful
+data$Operator = as.factor(data$Operator)
+data$In.Out.Travelling = as.factor(data$In.Out.Travelling)
+data$Call.Drop.Category = as.factor(data$Call.Drop.Category)
+data$Network.Type = as.factor(data$Network.Type)
+data$State.Name = as.factor(data$State.Name)
+
+# ----------------------------HANDLING MISSING VALUES---------------------------------------------------------
+
 
 #first, identifying the missing values
 #and modifying these values so that they can be detected as missing values by R
@@ -57,7 +71,10 @@ View(data)
 
 #to visualize the missing values and how it is distributed with the data, use mice package
 library(mice)
-md.pattern(data)
+
+summary(data)
+dev.new(width=15, height=5, unit="in")
+md.pattern(data, rotate.names = TRUE)
 
 
 #replacing missing values with most occurring value in that attribute
@@ -66,8 +83,24 @@ networkTypeReplace = names(sort(table(data$Network.Type), decreasing = TRUE)[1])
 sprintf("Most frequently occurring value for Network Type attribute : %s", networkTypeReplace)
 data$Network.Type[is.na(data$Network.Type)] <- networkTypeReplace
 
-stateReplace = names(sort(table(data$State.Name), decreasing = TRUE)[1])
-sprintf("Most frequently occurring value for State Name attribute : %s", stateReplace)
-data$State.Name[is.na(data$State.Name)] <- stateReplace
 
 View(data)
+
+
+#---1. Rank the operators based on user satisfaction ---------------------------------------------
+
+sortedRating = names(sort(table(data$Rating), decreasing = TRUE))
+sortedRating
+
+library(hash)
+
+operatorStats = hash()
+
+
+#getting mean rating for all operators
+
+for(x in operatorVal)
+  operatorStats[[x]] = mean(data$Rating[which(data$Operator == x)], trim = 0, na.rm = FALSE)
+  
+sprintf("operators sorted based on their avergae ratings")
+sort(values(operatorStats), decreasing = TRUE)
