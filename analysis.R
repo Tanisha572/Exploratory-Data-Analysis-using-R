@@ -92,8 +92,6 @@ View(data)
 sortedRating = names(sort(table(data$Rating), decreasing = TRUE))
 sortedRating
 
-library(hash)
-
 operatorStats = matrix(data = NA, nrow = 6, ncol = 3, dimnames = list(c(levels(operatorVal)), c("avgRating", "#ratings=1", "#ratings=5")))
 
 #getting mean rating, #low ratings and #high ratings for all operators
@@ -114,5 +112,20 @@ sort(operatorStats[,1], decreasing = TRUE)
 sprintf("operators sorted based on their #ratings = 1")
 sort(operatorStats[,2], decreasing = TRUE)
 
-sprintf("operators sorted based on their #ratings = 2")
+sprintf("operators sorted based on their #ratings = 5")
 sort(operatorStats[,3], decreasing = TRUE)
+
+
+#--------------2. Which operator has the most call drops -------------------------------------------
+
+
+callDropRate = c()
+for(x in operatorVal)
+    callDropRate = append(callDropRate, NROW(which(data$Operator == x & data$Call.Drop.Category == "Call Dropped")))
+
+#appending the callDropRate column onto the operatorStats
+operatorStats = cbind(operatorStats, callDropRate)
+
+
+sprintf("operators sorted based on their call drop rate")
+sort(operatorStats[,4], decreasing = TRUE)
