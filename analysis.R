@@ -94,13 +94,25 @@ sortedRating
 
 library(hash)
 
-operatorStats = hash()
+operatorStats = matrix(data = NA, nrow = 6, ncol = 3, dimnames = list(c(levels(operatorVal)), c("avgRating", "#ratings=1", "#ratings=5")))
 
-
-#getting mean rating for all operators
-
-for(x in operatorVal)
-  operatorStats[[x]] = mean(data$Rating[which(data$Operator == x)], trim = 0, na.rm = FALSE)
+#getting mean rating, #low ratings and #high ratings for all operators
+i = 1
+for(x in operatorVal){
+   avgRating = mean(data$Rating[which(data$Operator == x)], trim = 0, na.rm = FALSE)
+   lowRating = NROW(which(data$Operator == x & data$Rating == 1))
+   highRating = NROW(which(data$Operator == x & data$Rating == 5))
+   operatorStats[i,] = c(avgRating, lowRating, highRating)
+   i = i +1
+}
   
-sprintf("operators sorted based on their avergae ratings")
-sort(values(operatorStats), decreasing = TRUE)
+print(operatorStats)
+
+sprintf("operators sorted based on their average ratings")
+sort(operatorStats[,1], decreasing = TRUE)
+
+sprintf("operators sorted based on their #ratings = 1")
+sort(operatorStats[,2], decreasing = TRUE)
+
+sprintf("operators sorted based on their #ratings = 2")
+sort(operatorStats[,3], decreasing = TRUE)
