@@ -1,4 +1,5 @@
 #Read data from csv file
+library(ggplot2)
 data <- read.csv("myCall feedback_Apr2020.csv", header=TRUE, fileEncoding="UTF-8-BOM")
 View(data)
 attrs <- ncol(data) #number of columns
@@ -83,8 +84,8 @@ networkTypeReplace = names(sort(table(data$Network.Type), decreasing = TRUE)[1])
 sprintf("Most frequently occurring value for Network Type attribute : %s", networkTypeReplace)
 data$Network.Type[is.na(data$Network.Type)] <- networkTypeReplace
 
-
 View(data)
+write.csv(data, "cleaned-data.csv", row.names = FALSE)
 
 
 #---1. Rank the operators based on user satisfaction ---------------------------------------------
@@ -126,6 +127,198 @@ for(x in operatorVal)
 #appending the callDropRate column onto the operatorStats
 operatorStats = cbind(operatorStats, callDropRate)
 
-
 sprintf("operators sorted based on their call drop rate")
 sort(operatorStats[,4], decreasing = TRUE)
+
+#----------3. Finding relation between user satisfaction and frequency band of the network----------
+
+data<-read.csv("cleaned-data.csv", header=TRUE)
+# Get the subset of the dataset with only rating and network type columns
+df3 = data[,c('Network.Type', 'Rating','Call.Drop.Category')]
+
+# Plot a pie chart of popularity of different types of networks
+networkCount = table(df3[,'Network.Type'])
+networkCountDf = data.frame(networkCount)
+colnames(networkCountDf)[1] <- 'NetworkType'
+piepercent = as.array(round(100*networkCount/sum(networkCount),1))
+
+pielabels = piepercent
+for (i in 1:dim(piepercent)){
+  pielabels[i] = paste(as.character(pielabels[i]),"%", sep="")
+}
+
+ggplot(networkCountDf, aes(x = "", y = piepercent, fill = NetworkType)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = pielabels), color = c("white", "white", "white"),
+             position = position_stack(vjust = 0.5),
+             show.legend = FALSE) +
+  ggtitle("Pie Chart representing popularity of network type")+
+  guides(fill = guide_legend(title = "NetworkType")) +
+  scale_fill_manual(values=c('#3e065c','#cd2051','#ffa600')) +
+  coord_polar(theta = "y") + 
+  theme_void()+  theme(plot.title = element_text(hjust = 0.5))
+
+
+# Getting the mean rating for the 3 network types
+mean(df3[df3$Network.Type == '2G','Rating'])
+mean(df3[df3$Network.Type == '3G','Rating'])
+mean(df3[df3$Network.Type == '4G','Rating'])
+
+# Get weighted frequencies of ratings within each network type
+networkVsRating = table(df3[,c('Network.Type', 'Rating')])
+networkVsRatingDf = data.frame(networkVsRating)
+networkVsRatingDf
+
+probs_table = networkVsRating
+for (i in 1:dim(probs_table)[1])
+  probs_table[i,] = probs_table[i,] / sum(probs_table[i,])
+probs_table
+
+probDf = data.frame(probs_table)
+rating = probDf[,'Rating']
+network = probDf[,'Network.Type']
+probs = probDf[,'Freq']
+
+# Plotting the bar graph of weighted frequencies
+ggplot(probDf,aes(x=rating,y=probs, fill=network)) +
+  geom_bar(stat="identity", width=0.8, position=position_dodge(0.85), alpha=1.0) +
+  ggtitle("Comparison of different network types based on rating") + 
+  xlab("Rating")+
+  ylab("Weighted Frequencies")+
+  scale_fill_manual(values=c('#3e065c','#cd2051','#ffa600'))+
+  labs(fill="NetworkType")
+
+# Plotting percentage bar graph to see distribution of ratings within each network.
+ggplot(networkVsRatingDf,aes(x=Network.Type,y=Freq, fill=Rating)) +
+  geom_bar(stat="identity", width=0.5,position="fill") +
+  ggtitle("Percentage of different ratings for each network type") + 
+  xlab("Network Type")+
+  ylab("Percentage Frequency")+
+  scale_fill_manual(values=c("#d43d51","#ed9568","#ffdfaa","#b0b561","#488f31"))+
+  labs(fill="Rating")
+
+
+# Analysing the impact of network type on CallDropCat
+networkVsCallDrop = table(df3[,c('Network.Type', 'Call.Drop.Category')])
+networkVsCallDropDf = data.frame(networkVsCallDrop)
+
+# Plot percentage bar graph of different ratings within each network type
+ggplot(networkVsCallDropDf,aes(x=Network.Type,y=Freq, 
+                               fill=Call.Drop.Category)) +
+  geom_bar(stat="identity", width=0.5, alpha=1.0,position="fill") +
+  ggtitle("Percentage barchart for comparing call drop quality for different network types") + 
+  xlab("Network type")+
+  ylab("Percentage")+
+  scale_fill_manual(values=c("#004c6d","#2a99b9","#62efff"))+
+  labs(fill="CallDropCat")
+
+
+#------4(a) Finding any association between location type & rating---------------------------------
+df4 <- data[,c('Operator','In.Out.Travelling','Rating','Call.Drop.Category')]
+colnames(df4)[2] = 'LocType'
+colnames(df4)[4] = 'CallDropCat'
+df4
+
+df4a = df4[,c('LocType','Rating')]
+df4a_freq = data.frame(table(df4a))
+
+freq = df4a_freq[,'Freq']
+rating = df4a_freq[,'Rating']
+locType = df4a_freq[,'LocType']
+
+# Draw a combined bar plot
+ggplot(df4a_freq,aes(x=rating,y=freq, fill=locType)) +
+  geom_bar(stat="identity", width=0.8, alpha=0.7,position=position_dodge(0.85)) +
+  ggtitle("Comparison of location types on the basis of rating") + 
+  xlab("Rating")+
+  ylab("Frequencies")+
+  labs(fill="LocType")
+
+# Function to compute weighted frequencies
+getWeightedFreq <- function(frequencies){
+  weighted_freq = frequencies
+  for (i in 1:dim(weighted_freq)[1])
+    weighted_freq[i,] = weighted_freq[i,] / sum(weighted_freq[i,])
+  print(weighted_freq)
+  data.frame(weighted_freq)
+}
+
+df4a_weighted = getWeightedFreq(table(df4a))
+weighted_freq = df4a_weighted[,'Freq']
+
+# Plot combined bar graphs with weighted frequencies
+ggplot(df4a_weighted,aes(x=rating,y=weighted_freq, fill=locType)) +
+  geom_bar(stat="identity", width=0.8, alpha=0.7,position=position_dodge(0.85)) +
+  ggtitle("Comparison of Weighted Frequencies") + 
+  xlab("Rating")+
+  ylab("Weighted Frequencies")+
+  labs(fill="LocType")
+
+# Plot a percentage bar graph for further interpretability
+ggplot(df4a_freq,aes(x=locType,y=freq, fill=rating)) +
+  geom_bar(stat="identity", width=0.5,position="fill") +
+  ggtitle("Percentage Stacked barchart") + 
+  xlab("LocType")+
+  ylab("Percentage Frequency")+
+  scale_fill_manual(values=c("#d43d51","#ed9568","#ffdfaa","#b0b561","#488f31"))+
+  labs(fill="Rating")
+
+
+
+#------4(b)Finding any association between location type & call drops-------------------------------
+locTypeVsCallDrop = table(df4[,c('LocType','CallDropCat')])
+locTypeVsCallDrop
+
+locTypeVsCallDropDf = data.frame(locTypeVsCallDrop)
+
+# Plot a stacked barchat with LocType on X axis
+ggplot(locTypeVsCallDropDf,aes(x=locTypeVsCallDropDf$LocType,y=locTypeVsCallDropDf$Freq, 
+                               fill=locTypeVsCallDropDf$CallDropCat)) +
+  geom_bar(stat="identity", width=0.5, alpha=1.0,position="fill") +
+  ggtitle("Percentage barchart for comparing call drop quality for different location status") + 
+  xlab("LocType")+
+  ylab("Percentage")+
+  scale_fill_manual(values=c("#004c6d","#2a99b9","#62efff"))+
+  labs(fill="CallDropCat")
+
+
+#-------5.Comparison of operators in terms of indoor, outdoor and travelling network quality--------
+
+# Indoor Quality for different operators in terms of CallDropCat  
+indoorTable = table(df4[df4$LocType=='Indoor',c('Operator','CallDropCat')])
+indoorTableDf = data.frame(indoorTable)
+indoorTable
+
+ggplot(indoorTableDf, aes(x=Operator,y=Freq, fill=CallDropCat)) +
+  geom_bar(stat="identity", width=0.5, alpha=1.0,position="fill") +
+  ggtitle("Percentage Stacked barchart for comparing indoor call quality for different operators") + 
+  xlab("Operator")+
+  ylab("Percentage Frequency")+
+  scale_fill_manual(values=c("#004c6d","#2a99b9","#62efff"))+
+  labs(fill="Calldrop category")
+
+
+# Outdoor Quality for different operators in terms of CallDropCat
+outdoorTable = table(df4[df4$LocType=='Outdoor',c('Operator','CallDropCat')])
+outdoorTableDf = data.frame(outdoorTable)
+outdoorTable
+
+ggplot(outdoorTableDf, aes(x=outdoorTableDf[,'Operator'],y=outdoorTableDf[,'Freq'], fill=outdoorTableDf[,'CallDropCat'])) +
+  geom_bar(stat="identity", width=0.5, alpha=1.0,position="fill") +
+  ggtitle("Percentage Stacked barchart for comparing Outdoor call quality for different operators") + 
+  xlab("Operator")+
+  ylab("Percentage Frequency")+
+  scale_fill_manual(values=c("#004c6d","#2a99b9","#62efff"))+
+  labs(fill="Calldrop category")
+
+# Travelling Quality for different operators in terms of CallDropCat
+travelTable = table(df4[df4$LocType=='Travelling',c('Operator','CallDropCat')])
+travelTableDf = data.frame(travelTable)
+travelTable
+ggplot(travelTableDf, aes(x=travelTableDf[,'Operator'],y=travelTableDf[,'Freq'], fill=travelTableDf[,'CallDropCat'])) +
+  geom_bar(stat="identity", width=0.5, alpha=1.0,position="fill") +
+  ggtitle("Percentage Stacked barchart for comparing Travelling call quality for different operators") + 
+  xlab("Operator")+
+  ylab("Percentage Frequency")+
+  scale_fill_manual(values=c("#004c6d","#2a99b9","#62efff"))+
+  labs(fill="Calldrop category")
