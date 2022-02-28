@@ -322,3 +322,37 @@ ggplot(travelTableDf, aes(x=travelTableDf[,'Operator'],y=travelTableDf[,'Freq'],
   ylab("Percentage Frequency")+
   scale_fill_manual(values=c("#004c6d","#2a99b9","#62efff"))+
   labs(fill="Calldrop category")
+
+#----------8. Call Quality in Various Regions of Country----------
+library(sf)
+library(tidyverse)
+library(ggplot2)
+library(plyr)
+
+india_official <- st_read("India-Map/India_State_Boundary.shp")
+head(india_official)
+
+regionTable = data[complete.cases(data), ] # remove all NA value rows
+head(regionTable)
+pnts_sf <- st_as_sf(regionTable, coords = c('Longitude', 'Latitude'), crs = st_crs(4326))
+pnts_trans <- st_transform(pnts_sf, 2163)
+map_trans <- st_transform(india_official, 2163)
+
+pnts_intersections <- pnts_sf %>% mutate(
+  ID = as.integer(st_intersects(pnts_trans, map_trans)))
+
+aggr_pnts <- pnts_intersections %>% group_by(ID) %>%
+  summarise_at(vars(Rating), list(name = mean))
+
+aggr_pnts_df <- as.data.frame(aggr_pnts)
+india_official_df <- as.data.frame(india_official)
+india_official_df$ID <- 1:37
+
+res <- merge(x = india_official_df,y = aggr_pnts_df, by="ID", all.x = TRUE)
+
+india_official$RATING <- res$name
+
+library(viridis)
+ggplot(india_official) + 
+  geom_sf(aes(fill=RATING)) +
+  scale_fill_viridis(discrete=FALSE)
