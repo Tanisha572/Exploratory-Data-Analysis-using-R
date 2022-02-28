@@ -15,6 +15,7 @@ class(data)
 #sense in discrete and nominal/ordinal attributes
 
 #not making rating a factor as mean median etc operations are meaningful
+
 data$Operator = as.factor(data$Operator)
 data$In.Out.Travelling = as.factor(data$In.Out.Travelling)
 data$Call.Drop.Category = as.factor(data$Call.Drop.Category)
@@ -77,6 +78,8 @@ summary(data)
 dev.new(width=15, height=5, unit="in")
 md.pattern(data, rotate.names = TRUE)
 
+ggplot(data, aes(Network.Type, fill = Network.Type)) + geom_bar() + theme_wsj()+ scale_colour_wsj("colors6")
+
 
 #replacing missing values with most occurring value in that attribute
 
@@ -84,6 +87,29 @@ networkTypeReplace = names(sort(table(data$Network.Type), decreasing = TRUE)[1])
 sprintf("Most frequently occurring value for Network Type attribute : %s", networkTypeReplace)
 data$Network.Type[is.na(data$Network.Type)] <- networkTypeReplace
 
+
+#getting frequency plots for all nominal attributes
+library(ggplot)
+install.packages("ggthemes") # Install 
+
+ggplot(data, aes(Operator, fill = Operator)) + geom_bar() + theme_wsj()+ scale_colour_wsj("colors6")
+ggplot(data, aes(In.Out.Travelling, fill = In.Out.Travelling)) + geom_bar() + theme_wsj()+ scale_colour_wsj("colors6")
+ggplot(data, aes(Call.Drop.Category, fill = Call.Drop.Category)) + geom_bar() + theme_wsj()+ scale_colour_wsj("colors6")
+ggplot(data, aes(State.Name, fill = State.Name)) + geom_bar() + theme_wsj()+ scale_colour_wsj("colors6") + coord_flip()
+
+#getting the new plot for network type as well
+ggplot(data, aes(Network.Type, fill = Network.Type)) + geom_bar() + theme_wsj()+ scale_colour_wsj("colors6")
+
+ggplot() + 
+  geom_boxplot(aes(y = data$Rating)) + 
+  scale_x_discrete( ) +
+  ylim(c(1,5)) +
+  labs(title = "Rating by customers for April 2020",
+       y = "Rating") + theme_wsj()+ scale_colour_wsj("colors6")
+
+
+#getting updated summary on the data
+summary(data)
 View(data)
 write.csv(data, "cleaned-data.csv", row.names = FALSE)
 
@@ -108,14 +134,19 @@ for(x in operatorVal){
 print(operatorStats)
 
 sprintf("operators sorted based on their average ratings")
-sort(operatorStats[,1], decreasing = TRUE)
+avgRating = sort(operatorStats[,1], decreasing = TRUE)
 
 sprintf("operators sorted based on their #ratings = 1")
-sort(operatorStats[,2], decreasing = TRUE)
+lowRating = sort(operatorStats[,2], decreasing = TRUE)
 
 sprintf("operators sorted based on their #ratings = 5")
-sort(operatorStats[,3], decreasing = TRUE)
+highRating = sort(operatorStats[,3], decreasing = TRUE)
 
+#plotting the respective ratings and #records
+library(lattice)
+barchart(avgRating)
+barchart(lowRating)
+barchart(highRating)
 
 #--------------2. Which operator has the most call drops -------------------------------------------
 
@@ -128,7 +159,10 @@ for(x in operatorVal)
 operatorStats = cbind(operatorStats, callDropRate)
 
 sprintf("operators sorted based on their call drop rate")
-sort(operatorStats[,4], decreasing = TRUE)
+callDropRank = sort(operatorStats[,4], decreasing = TRUE)
+callDropRank
+#plotting the graph
+barchart(callDropRank)
 
 #----------3. Finding relation between user satisfaction and frequency band of the network----------
 
